@@ -132,7 +132,8 @@ class MoveView(discord.ui.View):
 
             await update_pokemon(attacker)
             await clear_encounter(self.trainer.user_id)
-            self.parent.disable_all_items()
+            for _item in self.parent.children:
+                _item.disabled = True
 
             embed = discord.Embed(
                 title="🏆 Victory!",
@@ -183,7 +184,8 @@ class MoveView(discord.ui.View):
                     p.current_hp = max(1, p.max_hp // 4)
                     await update_pokemon(p)
                 await clear_encounter(self.trainer.user_id)
-                self.parent.disable_all_items()
+                for _item in self.parent.children:
+                    _item.disabled = True
                 embed = discord.Embed(
                     title="😵 You blacked out!",
                     description="\n".join(log)
@@ -208,7 +210,8 @@ class BattleView(discord.ui.View):
         self.message: discord.Message | None = None
 
     async def on_timeout(self) -> None:
-        self.disable_all_items()
+        for _item in self.children:
+            _item.disabled = True
         if self.message:
             try:
                 await self.message.edit(
@@ -292,7 +295,8 @@ class BattleView(discord.ui.View):
                 dest = "sent to your PC box"
 
             await clear_encounter(trainer.user_id)
-            self.disable_all_items()
+            for _item in self.children:
+                _item.disabled = True
 
             shiny_tag = "✨ **Shiny!** " if self.wild.is_shiny else ""
             embed = pokemon_embed(
@@ -316,7 +320,8 @@ class BattleView(discord.ui.View):
             await interaction.response.send_message("Not your battle!", ephemeral=True)
             return
         await clear_encounter(self.trainer.user_id)
-        self.disable_all_items()
+        for _item in self.children:
+            _item.disabled = True
         embed = discord.Embed(
             title="Got away safely!",
             description="You fled from the wild Pokémon.",
