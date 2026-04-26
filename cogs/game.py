@@ -37,7 +37,8 @@ class StarterView(discord.ui.View):
         if self.chosen:
             return
         self.chosen = True
-        self.disable_all_items()
+        for _item in self.children:
+            _item.disabled = True
 
         await interaction.response.defer()
         pokemon = await get_starter(name, self.bot.session)  # type: ignore[attr-defined]
@@ -65,7 +66,8 @@ class StarterView(discord.ui.View):
         await self._pick(i, "squirtle")
 
     async def on_timeout(self) -> None:
-        self.disable_all_items()
+        for _item in self.children:
+            _item.disabled = True
 
 
 class PokedexView(discord.ui.View):
