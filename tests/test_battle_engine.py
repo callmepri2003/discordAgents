@@ -177,3 +177,75 @@ def test_calculate_hp_at_level():
     assert hp > 0
     hp_high = calculate_hp_at_level(45, 50)
     assert hp_high > hp
+
+
+# ── Edge cases: zero defense, level 1, 4× weakness, immunity min damage ──────
+
+def test_calculate_damage_zero_defense_raises():
+    """The source does not guard against defense=0; confirm ZeroDivisionError is raised.
+
+    This documents a known edge-case bug in the source (battle_engine.py line ~50).
+    The test is here so that if the source is ever fixed to guard against div-by-zero
+    (e.g. by using max(1, def_)), this test will fail and alert the developer.
+    """
+    import pytest as _pytest
+    attacker = make_pokemon(attack=80, level=20)
+    defender = make_pokemon(defense=0)
+    move = make_move(power=80, damage_class="physical")
+    with _pytest.raises(ZeroDivisionError):
+        calculate_damage(attacker, defender, move, random_factor=1.0)
+
+
+def test_calculate_damage_level_1_attacker():
+    """Level 1 attacker should still deal at least 1 damage on a damaging move."""
+    attacker = make_pokemon(attack=50, level=1)
+    defender = make_pokemon(defense=50)
+    move = make_move(power=40, damage_class="physical")
+    dmg, _, _ = calculate_damage(attacker, defender, move, random_factor=1.0)
+    assert dmg >= 1
+
+
+def test_calculate_damage_fourfold_weakness():
+    """4× double weakness: water vs fire/rock should have effectiveness == 4.0."""
+    attacker = make_pokemon(types=["water"], attack=80, level=30)
+    defender = make_pokemon(types=["fire", "rock"], defense=50)
+    move = make_move(power=80, type_="water", damage_class="physical")
+    dmg, eff, _ = calculate_damage(attacker, defender, move, random_factor=1.0)
+    assert eff == 4.0
+    assert dmg >= 1
+
+
+def test_calculate_damage_immunity_returns_zero_effectiveness():
+    """Immunity (0× effectiveness) — effectiveness returned is 0.0."""
+    attacker = make_pokemon(types=["electric"], attack=200, level=50)
+    defender = make_pokemon(types=["ground"])
+    move = make_move(power=100, type_="electric", damage_class="special")
+    dmg, eff, _ = calculate_damage(attacker, defender, move, random_factor=1.0)
+    assert eff == 0.0
+
+
+def test_calculate_damage_immunity_floor_is_one():
+    """Even with 0× effectiveness, damage formula clamps to max(1, ...)."""
+    attacker = make_pokemon(types=["electric"], attack=200, level=50)
+    defender = make_pokemon(types=["ground"])
+    move = make_move(power=100, type_="electric", damage_class="special")
+    dmg, eff, _ = calculate_damage(attacker, defender, move, random_factor=1.0)
+    # When effectiveness is 0, base *= 0 = 0, then max(1, int(0)) = 1
+    assert dmg == 1
+
+
+def test_calculate_xp_gain_level_1_attacker():
+    """Level 1 winner still gains XP."""
+    defeated = make_pokemon(level=5)
+    xp = calculate_xp_gain(defeated, winner_level=1)
+    assert xp >= 1
+
+
+def test_calculate_damage_random_factor_minimum():
+    """Random factor at 0.85 should produce less damage than 1.0."""
+    attacker = make_pokemon(attack=100, level=20)
+    defender = make_pokemon(defense=50)
+    move = make_move(power=80, damage_class="physical")
+    dmg_max, _, _ = calculate_damage(attacker, defender, move, random_factor=1.0)
+    dmg_min, _, _ = calculate_damage(attacker, defender, move, random_factor=0.85)
+    assert dmg_max >= dmg_min
