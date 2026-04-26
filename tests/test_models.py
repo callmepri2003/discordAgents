@@ -154,3 +154,77 @@ def test_type_colors_coverage():
     for t in ["fire", "water", "grass", "electric"]:
         assert t in TYPE_COLORS
         assert isinstance(TYPE_COLORS[t], int)
+
+
+# ── Edge-case: shiny flag in display ─────────────────────────────────────────
+
+def test_display_name_shiny_flag_does_not_affect_display_name():
+    """is_shiny doesn't change display_name — it's only used by embed builders."""
+    p = make_pokemon(name="pikachu", is_shiny=True)
+    assert p.display_name == "Pikachu"
+
+
+def test_shiny_pokemon_is_shiny_true():
+    p = make_pokemon(is_shiny=True)
+    assert p.is_shiny is True
+
+
+def test_non_shiny_pokemon_is_shiny_false():
+    p = make_pokemon(is_shiny=False)
+    assert p.is_shiny is False
+
+
+# ── Edge-case: hp_bar at exactly 50% and 25% boundaries ─────────────────────
+
+def test_hp_bar_exactly_50_percent_is_yellow():
+    """At exactly 50% HP (not >50%), colour is yellow."""
+    p = make_pokemon(hp=100, current_hp=50)
+    bar = p.hp_bar()
+    # 50% is NOT > 0.5, so it falls into the "yellow" bucket (> 0.25)
+    assert "🟨" in bar
+
+
+def test_hp_bar_just_above_50_percent_is_green():
+    """Just above 50% HP should be green."""
+    p = make_pokemon(hp=100, current_hp=51)
+    bar = p.hp_bar()
+    assert "🟩" in bar
+
+
+def test_hp_bar_exactly_25_percent_is_red():
+    """At exactly 25% HP (not >25%), colour is red."""
+    p = make_pokemon(hp=100, current_hp=25)
+    bar = p.hp_bar()
+    # 25% is NOT > 0.25, so it falls into the red bucket
+    assert "🟥" in bar
+
+
+def test_hp_bar_just_above_25_percent_is_yellow():
+    """Just above 25% HP should be yellow."""
+    p = make_pokemon(hp=100, current_hp=26)
+    bar = p.hp_bar()
+    assert "🟨" in bar
+
+
+# ── Edge-case: party with 6 Pokémon ─────────────────────────────────────────
+
+def test_active_pokemon_returns_first_healthy_in_full_party():
+    """With 6 pokemon, active_pokemon should return the first non-fainted."""
+    fainted = [make_pokemon(current_hp=0) for _ in range(3)]
+    alive = [make_pokemon(current_hp=50) for _ in range(3)]
+    trainer = make_trainer(party=fainted + alive)
+    assert trainer.active_pokemon is alive[0]
+
+
+def test_party_with_six_pokemon():
+    """Trainer can hold a party of 6 Pokémon."""
+    party = [make_pokemon(name=f"poke{i}") for i in range(6)]
+    trainer = make_trainer(party=party)
+    assert len(trainer.party) == 6
+
+
+def test_all_fainted_in_full_party():
+    """If all 6 Pokémon faint, active_pokemon is None."""
+    party = [make_pokemon(current_hp=0) for _ in range(6)]
+    trainer = make_trainer(party=party)
+    assert trainer.active_pokemon is None
